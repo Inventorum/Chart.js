@@ -357,7 +357,8 @@ window.Chart = function(context){
 			animationSteps : 60,
 			animationEasing : "easeOutQuart",
 			onAnimationComplete : null,
-            drawLegend: false
+            drawLegend: false,
+            displayValuesAboveBars: false
 		};
 		var config = (options) ? mergeChartConfig(chart.Bar.defaults,options) : chart.Bar.defaults;
 		
@@ -1096,21 +1097,33 @@ window.Chart = function(context){
 					ctx.strokeStyle = data.datasets[i].strokeColor;
 				for (var j=0; j<data.datasets[i].data.length; j++){
 					var barOffset = yAxisPosX + config.barValueSpacing + valueHop*j + barWidth*i + config.barDatasetSpacing*i + config.barStrokeWidth*i;
-					
-					ctx.beginPath();
+					var barWidthCalculated = animPc*calculateOffset(data.datasets[i].data[j],calculatedScale,scaleHop)+(config.barStrokeWidth/2);
+
+					ctx.beginPath(barOffset, xAxisPosY);
 					ctx.moveTo(barOffset, xAxisPosY);
-					ctx.lineTo(barOffset, xAxisPosY - animPc*calculateOffset(data.datasets[i].data[j],calculatedScale,scaleHop)+(config.barStrokeWidth/2));
-					ctx.lineTo(barOffset + barWidth, xAxisPosY - animPc*calculateOffset(data.datasets[i].data[j],calculatedScale,scaleHop)+(config.barStrokeWidth/2));
+					ctx.lineTo(barOffset, xAxisPosY - barWidthCalculated);
+					ctx.lineTo(barOffset + barWidth, xAxisPosY - barWidthCalculated);
 					ctx.lineTo(barOffset + barWidth, xAxisPosY);
 					if(config.barShowStroke){
 						ctx.stroke();
 					}
 					ctx.closePath();
 					ctx.fill();
+                    if(config.displayValuesAboveBars) {
+                        drawBarValue(barOffset + barWidth/2, xAxisPosY - barWidthCalculated, data.datasets[i].data[j]);
+                    }
 				}
 			}
 			
 		}
+            function drawBarValue(x, y, text) {
+                ctx.save();
+                ctx.textBaseline = "middle";
+                ctx.textAlign = "center";
+                ctx.fillStyle = config.scaleFontColor;
+                ctx.fillText(text, x, y - 10);
+                ctx.restore();
+            }
 		function drawScale(){
             if(config.drawLegend) {
                 legendSize = chart.Legend(data,config);
