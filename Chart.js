@@ -160,6 +160,19 @@ window.Chart = function(context){
 		context.canvas.width = width * window.devicePixelRatio;
 		context.scale(window.devicePixelRatio, window.devicePixelRatio);
 	}
+    this.Legend = function(data, options) {
+        chart.Legend.defaults = {
+            legendWidth: 200,
+            legendMarginY: 10,
+            legendMarginX: 10,
+            legendFontSize: 18
+        };
+
+        var config = (options)? mergeChartConfig(chart.Legend.defaults,options) : chart.Legend.defaults;
+
+        return new Legend(data,config,context);
+    }
+
 
 	this.PolarArea = function(data,options){
 	
@@ -343,8 +356,9 @@ window.Chart = function(context){
 			animation : true,
 			animationSteps : 60,
 			animationEasing : "easeOutQuart",
-			onAnimationComplete : null
-		};		
+			onAnimationComplete : null,
+            drawLegend: false
+		};
 		var config = (options) ? mergeChartConfig(chart.Bar.defaults,options) : chart.Bar.defaults;
 		
 		return new Bar(data,config,context);		
@@ -1018,9 +1032,40 @@ window.Chart = function(context){
 		
 	}
 	
-	var Bar = function(data,config,ctx){
+    var Legend = function(data,config,ctx){
+        var labels = [];
+        ctx.save();
+        ctx.font = config.scaleFontStyle + " " + config.legendFontSize+"px " + config.scaleFontFamily;
+        ctx.textAlign = "right";
+        ctx.textBaseline = "top";
+
+        var startX = config.legendMarginX;
+        var startY = config.legendMarginY;
+        var legendWidth = ctx.canvas.width-config.legendMarginX*2;
+
+        var maxHeight = 0;
+        for(var i=0; i<data.datasets.length; i++) {
+            var label = data.datasets[i].labelName;
+            if(typeof label == 'undefined') {
+                label = i;
+            }
+            var color = data.datasets[i].strokeColor;
+            ctx.fillStyle = color;
+
+            maxHeight = startY + (config.legendFontSize+3) * i;
+            ctx.fillText(label+"", startX+legendWidth, maxHeight, legendWidth);
+        }
+        ctx.restore();
+        return {width: legendWidth, height: startY + (config.legendFontSize+3) * data.datasets.length};
+    }
+
+        var Bar = function(data,config,ctx){
 		var maxSize, scaleHop, calculatedScale, labelHeight, scaleHeight, valueBounds, labelTemplateString, valueHop,widestXLabel, xAxisLength,yAxisPosX,xAxisPosY,barWidth, rotateLabels = 0;
 			
+        var legendSize = {width: 0, height: 0};
+            if(config.drawLegend) {
+                legendSize = chart.Legend(data,config);
+            }
 		calculateDrawingSizes();
 		
 		valueBounds = getValueBounds();
@@ -1067,6 +1112,9 @@ window.Chart = function(context){
 			
 		}
 		function drawScale(){
+            if(config.drawLegend) {
+                legendSize = chart.Legend(data,config);
+            }
 			//X axis line
 			ctx.lineWidth = config.scaleLineWidth;
 			ctx.strokeStyle = config.scaleLineColor;
@@ -1102,8 +1150,8 @@ window.Chart = function(context){
 				
 				//Check i isnt 0, so we dont go over the Y axis twice.
 					ctx.lineWidth = config.scaleGridLineWidth;
-					ctx.strokeStyle = config.scaleGridLineColor;					
-					ctx.lineTo(yAxisPosX + (i+1) * valueHop, 5);
+					ctx.strokeStyle = config.scaleGridLineColor;
+					ctx.lineTo(yAxisPosX + (i+1) * valueHop, 5 + legendSize.height);
 				ctx.stroke();
 			}
 			
@@ -1112,7 +1160,7 @@ window.Chart = function(context){
 			ctx.strokeStyle = config.scaleLineColor;
 			ctx.beginPath();
 			ctx.moveTo(yAxisPosX,xAxisPosY+5);
-			ctx.lineTo(yAxisPosX,5);
+			ctx.lineTo(yAxisPosX,5 + legendSize.height);
 			ctx.stroke();
 			
 			ctx.textAlign = "right";
@@ -1155,10 +1203,10 @@ window.Chart = function(context){
 			barWidth = (valueHop - config.scaleGridLineWidth*2 - (config.barValueSpacing*2) - (config.barDatasetSpacing*data.datasets.length-1) - ((config.barStrokeWidth/2)*data.datasets.length-1))/data.datasets.length;
 			
 			yAxisPosX = width-widestXLabel/2-xAxisLength;
-			xAxisPosY = scaleHeight + config.scaleFontSize/2;				
-		}		
+			xAxisPosY = scaleHeight + config.scaleFontSize/2 + legendSize.height;
+		}
 		function calculateDrawingSizes(){
-			maxSize = height;
+			maxSize = height - legendSize.height;
 
 			//Need to check the X axis first - measure the length of each text metric, and figure out if we need to rotate by 45 degrees.
 			ctx.font = config.scaleFontStyle + " " + config.scaleFontSize+"px " + config.scaleFontFamily;
