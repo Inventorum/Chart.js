@@ -330,7 +330,14 @@ window.Chart = function(context){
 		
 		return new Line(data,config,context);
 	}
-	
+	this.drawValue = function(x, y, text, config) {
+        context.save();
+        context.textBaseline = "middle";
+        context.textAlign = "center";
+        context.fillStyle = config.scaleFontColor;
+        context.fillText(text, x, y);
+        context.restore();
+    }
 	this.Bar = function(data,options){
 		chart.Bar.defaults = {
 			scaleOverlay : false,
@@ -358,10 +365,12 @@ window.Chart = function(context){
 			animationEasing : "easeOutQuart",
 			onAnimationComplete : null,
             drawLegend: false,
-            displayValuesAboveBars: false
+            displayValues: false
 		};
 		var config = (options) ? mergeChartConfig(chart.Bar.defaults,options) : chart.Bar.defaults;
-		
+		if(width <=0 || height <=0) {
+            return;
+        }
 		return new Bar(data,config,context);		
 	}
 	
@@ -1109,21 +1118,13 @@ window.Chart = function(context){
 					}
 					ctx.closePath();
 					ctx.fill();
-                    if(config.displayValuesAboveBars) {
-                        drawBarValue(barOffset + barWidth/2, xAxisPosY - barWidthCalculated, data.datasets[i].data[j]);
+                    if(config.displayValues) {
+                        chart.drawValue(barOffset + barWidth/2, xAxisPosY - barWidthCalculated - 10, data.datasets[i].data[j], config);
                     }
 				}
 			}
 			
 		}
-            function drawBarValue(x, y, text) {
-                ctx.save();
-                ctx.textBaseline = "middle";
-                ctx.textAlign = "center";
-                ctx.fillStyle = config.scaleFontColor;
-                ctx.fillText(text, x, y - 10);
-                ctx.restore();
-            }
 		function drawScale(){
             if(config.drawLegend) {
                 legendSize = chart.Legend(data,config);
@@ -1355,21 +1356,21 @@ window.Chart = function(context){
             graphRange = graphMax - graphMin;
             
             stepValue = Math.pow(10, rangeOrderOfMagnitude);
-            
 	        numberOfSteps = Math.round(graphRange / stepValue);
 	        
-	        //Compare number of steps to the max and min for that size graph, and add in half steps if need be.	        
-	        while(numberOfSteps < minSteps || numberOfSteps > maxSteps) {
-	        	if (numberOfSteps < minSteps){
-			        stepValue /= 2;
-			        numberOfSteps = Math.round(graphRange/stepValue);
-		        }
-		        else{
-			        stepValue *=2;
-			        numberOfSteps = Math.round(graphRange/stepValue);
-		        }
-	        };
-
+	        //Compare number of steps to the max and min for that size graph, and add in half steps if need be.
+            if(isFinite(stepValue) && stepValue>0) {
+                while(numberOfSteps < minSteps || numberOfSteps > maxSteps) {
+                    if (numberOfSteps < minSteps){
+                        stepValue /= 2;
+                        numberOfSteps = Math.round(graphRange/stepValue);
+                    }
+                    else{
+                        stepValue *=2;
+                        numberOfSteps = Math.round(graphRange/stepValue);
+                    }
+                };
+            }
 	        var labels = [];
 	        populateLabels(labelTemplateString, labels, numberOfSteps, graphMin, stepValue);
 		
